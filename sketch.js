@@ -1,5 +1,14 @@
 // VARIABLES GLOBALES
-let nivel_actual=0, balas_en_pantalla=[], stars=[], cooldown=0, nivel_1, nivel_2, nivel_3;
+let nivel_actual=0, balas_en_pantalla=[], stars=[], cooldown=0, nivel_1;
+
+let nivel_2, nivel_3;
+let tiempo_nivel = 0;
+let tiempo_aparicion = 0;
+let enemigos_especiales_agregados = false;
+
+let nivel_global = 1;
+let estado_juego = "menu";
+let tiempo_transicion = 0
 
 class Jugador{
   constructor (x,y,w,h,vida,velocidad){
@@ -24,7 +33,7 @@ class Jugador{
       if (keyIsDown(32)) {
         balas_en_pantalla.push(new Misil((this.x+(this.w/2)),this.y,13))
         cooldown=30;
-      };
+      }
     }
   }
 }
@@ -148,62 +157,137 @@ class Star {
   }
 }
 
+//SISTEMA DE MENU----------------------------------------------START
+function keyPressed() {
+  if (estado_juego === "menu" && key === " ") {
+    estado_juego = "transicion";
+    nivel_actual = 0;
+    nivel_global = 1;
+    tiempo_transicion = millis();
+  }
+}
+
+function mostrar_menu() {
+  background(0);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(64);
+  text("GALAGA", width / 2, height / 2 - 100);
+  textSize(24);
+  text("Presiona SPACE para iniciar", width / 2, height / 2);
+}
+
+function mostrar_transicion() {
+  background(0);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(48);
+  text("Nivel " + nivel_global, width / 2, height / 2);
+  if (millis() - tiempo_transicion > 2000) {
+    estado_juego = "jugando";
+    crear_nivel();
+  }
+}
+//SISTEMA DE MENU----------------------------------------------END
+
+//SISTEMA DE NIVELES----------------------------------------------START
 // CREAR ENTIDADES //
 let jugador = new Jugador(10,620,20,30,3,7);
 
 // Crea niveles empezando de 0 y va avanzando cada que es llamado.
-function crear_nivel(){
-  switch (nivel_actual) {
+function crear_nivel() {
+  tiempo_nivel = millis();
+  tiempo_aparicion = millis();
+  enemigos_especiales_agregados = false;
+
+  let nivel_ciclo = (nivel_global - 1) % 3;
+
+  switch (nivel_ciclo) {
     case 0:
-      // Crea el primer nivel con enemigos tipo1
-      let enemigos_nivel_1 = [];
-      for (let i = 0; i < 2; i++) {
-        for (let j = 0; j < 5; j++) {
-          enemigos_nivel_1.push(new Enemigos((300+(j*63)), (10+(i*40)), 30, 30, 'tipo1', 1));
-        }
-      }
-      nivel_1 = new Nivel(1, enemigos_nivel_1);
-      nivel_actual=1;
+      nivel_1 = new Nivel(nivel_global, []);
+      nivel_actual = 1;
       break;
     case 1:
-
-    nivel_actual=2;
+      nivel_2 = new Nivel(nivel_global, []);
+      nivel_actual = 2;
       break;
     case 2:
-      nivel_actual=3;
+      nivel_3 = new Nivel(nivel_global, []);
+      nivel_actual = 3;
       break;
-    case 3:
-      // AL TERMINAR EL ULTIMO NIVEL(3), GANA EL JUEGO
-      break;
-    default:break;
   }
 }
-// FUNCIONES DE ACTUALIZACIÓN //
-function actualizar(){
+
+function enemigos_periodicos(nivel) {
+  if (millis() - tiempo_aparicion > 1000) {
+    tiempo_aparicion = millis();
+    let x = random(100, width - 100);
+    let y = random(10, 100);
+    nivel.enemigos.push(new Enemigos(x, y, 30, 30, 'tipo2', 1));
+  }
+}
+
+function enemigos_especiales(nivel, lista_enemigos) {
+  if (!enemigos_especiales_agregados) {
+    for (let enemigo of lista_enemigos) {
+      nivel.enemigos.push(enemigo);
+    }
+    enemigos_especiales_agregados = true;
+  }
+}
+
+function actualizar() {
   jugador.mostrar();
   jugador.actualizar();
   jugador.disparo();
   actualizar_disparos();
 
   switch (nivel_actual) {
-    case 0:
-      if (balas_en_pantalla.length == 0) {
-        crear_nivel();
-      }
-      break;
     case 1:
       nivel_1.mostrar();
       nivel_1.actualizar_enemigos();
+      enemigos_periodicos(nivel_1);
+      if (millis() - tiempo_nivel > 10000) iniciar_transicion();
       break;
+
     case 2:
-      // Aquí podrías agregar lógica para el segundo nivel
+      nivel_2.mostrar();
+      nivel_2.actualizar_enemigos();
+      enemigos_periodicos(nivel_2);
+      enemigos_especiales(nivel_2, [new Enemigos(400, 100, 40, 40, 'tipo2', 3)]);
+      if (millis() - tiempo_nivel > 10000) iniciar_transicion();
       break;
+
     case 3:
-      // Aquí podrías agregar lógica para el tercer nivel
+      nivel_3.mostrar();
+      nivel_3.actualizar_enemigos();
+      enemigos_periodicos(nivel_3);
+      enemigos_especiales(nivel_3, [
+        new Enemigos(300, 100, 40, 40, 'tipo2', 3),
+        new Enemigos(500, 100, 40, 40, 'tipo2', 3),
+        new Enemigos(400, 50, 60, 60, 'tipo2', 7)
+      ]);
+      if (millis() - tiempo_nivel > 10000) iniciar_transicion();
       break;
-    default:break;
   }
 }
+//SISTEMA DE NIVELES----------------------------------------------END
+
+
+function iniciar_transicion() {
+  estado_juego = "transicion";
+  tiempo_transicion = millis();
+  nivel_global++;
+}
+
+function keyPressed() {
+  if (estado_juego === "menu" && key === " ") {
+    estado_juego = "transicion";
+    nivel_global = 1;
+    tiempo_transicion = millis();
+  }
+}
+
 
 function actualizar_disparos(){
   if (balas_en_pantalla.length>0){
@@ -238,7 +322,12 @@ function setup() {
 }
 
 function draw() {
-  dibujar_fondo();
-
-  actualizar();
+  if (estado_juego === "menu") {
+    mostrar_menu();
+  } else if (estado_juego === "transicion") {
+    mostrar_transicion();
+  } else if (estado_juego === "jugando") {
+    dibujar_fondo();
+    actualizar();
+  }
 }
