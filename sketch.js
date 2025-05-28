@@ -10,6 +10,9 @@ let nivel_global = 1;
 let estado_juego = "menu";
 let tiempo_transicion = 0
 
+let vidas = 3;
+let puntaje = 0;
+
 class Jugador{
   constructor (x,y,w,h,vida,velocidad){
     this.x=x;
@@ -107,18 +110,37 @@ class Nivel{
     });
   }
   actualizar_enemigos(){
-    this.enemigos.forEach(enemigo => {
+    this.enemigos.forEach((enemigo, enemigoIndex) => {
       enemigo.movimiento();
+      // Si el enemigo toca al jugador, pierde una vida y se elimina
       if (enemigo.vida > 0 && enemigo.toca_jugador(jugador)) {
+        vidas = max(vidas - 1, 0); // Resta una vida
+        enemigo.vida = 0; // Elimina al enemigo
         console.log("¡Colisión con el jugador!");
+        if (vidas <= 0) estado_juego = "gameover"; // Cambio a pantalla de fin del juego
+      }
+      // Si el enemigo llega al fondo de la pantalla, resta una vida
+      if (enemigo.y > height && enemigo.vida > 0) {
+        vidas = max(vidas - 1, 0); // Resta una vida
+        enemigo.vida = 0; // Elimina al enemigo
+        console.log("¡Enemigo alcanzó el fondo!");
+        if (vidas <= 0) estado_juego = "gameover"; // Cambio a pantalla de fin del juego
       }
       if (balas_en_pantalla.length > 0) {
         balas_en_pantalla.forEach((bala, index) => {
           if (enemigo.vida > 0 && enemigo.toca_bala(bala)) {
             enemigo.vida -= 1; // Reduce la vida del enemigo
             balas_en_pantalla.splice(index, 1); // Elimina la bala que tocó al enemigo
+            // Otorgar puntos solo cuando se elimina completamente al enemigo
             if (enemigo.vida <= 0) {
               console.log("Enemigo eliminado");
+              if (enemigo.w >= 60) {
+                puntaje += 1000; // jefe final
+              } else if (enemigo.w >= 40) {
+                puntaje += 350; // enemigos resistentes
+              } else {
+                puntaje += 100; // enemigos normales
+              }
             }
           }
         });
@@ -157,13 +179,22 @@ class Star {
   }
 }
 
+
+
 //SISTEMA DE MENU----------------------------------------------START
-function keyPressed() {
+// TECLA PARA REINICIAR EL JUEGO DESDE GAME OVER --------
+function keyPressed(event) {
   if (estado_juego === "menu" && key === " ") {
     estado_juego = "transicion";
     nivel_actual = 0;
     nivel_global = 1;
     tiempo_transicion = millis();
+    vidas = 3;
+    puntaje = 0;
+  } else if (estado_juego === "gameover" && key === " ") {
+    estado_juego = "menu"; // Reinicia al menú principal
+    vidas = 3;
+    puntaje = 0;
   }
 }
 
@@ -187,6 +218,16 @@ function mostrar_transicion() {
     estado_juego = "jugando";
     crear_nivel();
   }
+}
+
+function mostrar_gameover() {
+  background(0);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(48);
+  text("GAME OVER", width / 2, height / 2 - 50);
+  textSize(24);
+  text("Presiona SPACE para volver al menú", width / 2, height / 2 + 20);
 }
 //SISTEMA DE MENU----------------------------------------------END
 
@@ -241,7 +282,7 @@ function actualizar() {
   jugador.actualizar();
   jugador.disparo();
   actualizar_disparos();
-
+  mostrar_UI();
   switch (nivel_actual) {
     case 1:
       nivel_1.mostrar();
@@ -269,6 +310,9 @@ function actualizar() {
       ]);
       if (millis() - tiempo_nivel > 10000) iniciar_transicion();
       break;
+    }
+  if (vidas <= 0) {
+  estado_juego = "gameover";
   }
 }
 //SISTEMA DE NIVELES----------------------------------------------END
@@ -280,13 +324,16 @@ function iniciar_transicion() {
   nivel_global++;
 }
 
-function keyPressed() {
-  if (estado_juego === "menu" && key === " ") {
-    estado_juego = "transicion";
-    nivel_global = 1;
-    tiempo_transicion = millis();
-  }
+
+function mostrar_UI() {
+  fill(255);
+  textSize(20);
+  textAlign(LEFT, TOP);
+  text("Vidas: " + vidas, 20, 20);
+  textAlign(RIGHT, TOP);
+  text("Puntaje: " + puntaje, width - 20, 20);
 }
+
 
 
 function actualizar_disparos(){
@@ -329,5 +376,7 @@ function draw() {
   } else if (estado_juego === "jugando") {
     dibujar_fondo();
     actualizar();
+  } else if (estado_juego === "gameover") {
+    mostrar_gameover();
   }
 }
