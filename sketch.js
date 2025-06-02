@@ -20,17 +20,17 @@ let img_naveJugador, img_enemigo_tipo1, img_enemigo_tipo2, img_enemigo_tipo_boss
 let sound_disparo_laser, sound_disparo_laser_enemigo, sound_nave_explosion, sound_boss_explosion, sound_muerte_jugador;
 
 function preload(){// función para cargar multimedia
-  img_naveJugador = loadImage('/assets/nave_jugador.png');
-  img_enemigo_tipo1 = loadImage('/assets/enemigo_tipo1.png');
-  img_enemigo_tipo2 = loadImage('/assets/enemigo_tipo2.png');
-  img_enemigo_tipo_boss = loadImage('/assets/enemigo_tipo_boss.png');
+  img_naveJugador = loadImage('assets/nave_jugador.png');
+  img_enemigo_tipo1 = loadImage('assets/enemigo_tipo1.png');
+  img_enemigo_tipo2 = loadImage('assets/enemigo_tipo2.png');
+  img_enemigo_tipo_boss = loadImage('assets/enemigo_tipo_boss.png');
 
   soundFormats('mp3');
-  sound_disparo_laser = loadSound('/assets/sound/disparo_laser.mp3');
-  sound_nave_explosion = loadSound('/assets/sound/nave_explosion.mp3');
-  sound_boss_explosion = loadSound('/assets/sound/boss_explosion.mp3');
-  sound_disparo_laser_enemigo = loadSound('/assets/sound/disparo_laser_enemigo.mp3');
-  sound_muerte_jugador = loadSound('/assets/sound/muerte_jugador.mp3');
+  sound_disparo_laser = loadSound('assets/sound/disparo_laser.mp3');
+  sound_nave_explosion = loadSound('assets/sound/nave_explosion.mp3');
+  sound_boss_explosion = loadSound('assets/sound/boss_explosion.mp3');
+  sound_disparo_laser_enemigo = loadSound('assets/sound/disparo_laser_enemigo.mp3');
+  sound_muerte_jugador = loadSound('assets/sound/muerte_jugador.mp3');
 }
 
 class Jugador{
