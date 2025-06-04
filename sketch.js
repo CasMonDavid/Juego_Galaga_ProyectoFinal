@@ -1,6 +1,6 @@
 // VARIABLES GLOBALES
 let nivel_actual=0, balas_en_pantalla=[], stars=[], cooldown=0, enemgios_especiales_vivos=0;
-let mejoresPuntajes = [0,0,0,0,0];
+let mejoresPuntajes = [];
 
 
 let nivel_1, nivel_2, nivel_3;
@@ -10,6 +10,8 @@ let enemigos_especiales_agregados = false;
 
 let nivel_global = 1;
 let estado_juego = "menu";
+let nombre_jugador = "";
+let ingresando_nombre = false;
 let tiempo_transicion = 0
 
 let vidas = 3;
@@ -17,7 +19,8 @@ let puntaje = 0;
 
 // Variables para imagenes y sonidos---START
 let img_naveJugador, img_enemigo_tipo1, img_enemigo_tipo2, img_enemigo_tipo_boss;
-let sound_disparo_laser, sound_disparo_laser_enemigo, sound_nave_explosion, sound_boss_explosion, sound_muerte_jugador;
+let sound_disparo_laser, sound_disparo_laser_enemigo, sound_nave_explosion, sound_boss_explosion, sound_muerte_jugador, sound_ganador;
+let sound_impacto_jugador;
 
 function preload(){// función para cargar multimedia
   img_naveJugador = loadImage('assets/nave_jugador.png');
@@ -31,6 +34,8 @@ function preload(){// función para cargar multimedia
   sound_boss_explosion = loadSound('assets/sound/boss_explosion.mp3');
   sound_disparo_laser_enemigo = loadSound('assets/sound/disparo_laser_enemigo.mp3');
   sound_muerte_jugador = loadSound('assets/sound/muerte_jugador.mp3');
+  sound_ganador = loadSound('assets/sound/ganador.mp3');
+  sound_impacto_jugador = loadSound('assets/sound/impacto_jugador.mp3');
 }
 
 class Jugador{
@@ -212,9 +217,14 @@ class Nivel{
         // Si el enemigo toca al jugador, pierde una vida y se elimina
         if (enemigo.toca_jugador(jugador)) {
           vidas = max(vidas - 1, 0);
+          sound_impacto_jugador.stop();
+          sound_impacto_jugador.play();
           enemigo.vida = 0; 
           console.log("¡Colisión con el jugador!");
-          if (vidas <= 0) estado_juego = "gameover";
+          if (vidas <= 0) {
+            estado_juego = "gameover";
+            sound_muerte_jugador.play();
+          }
         }
         // Si el enemigo llega al fondo de la pantalla, resta una vida
         if (enemigo.y > height) {
@@ -253,6 +263,8 @@ class Nivel{
           bala.mostrar();
           if (jugador.toca_bala_enemiga(bala)) {
             vidas--;
+            sound_impacto_jugador.stop();
+            sound_impacto_jugador.play();
             if (vidas <= 0) estado_juego = "gameover";
             enemigo.balas_en_pantalla.splice(index, 1);
           };
@@ -311,9 +323,19 @@ function keyPressed(event) {
     vidas = 3;
     puntaje = 0;
   } else if (estado_juego === "gameover" && key === " ") {
-    estado_juego = "menu"; // Reinicia al menú principal
+    estado_juego = "ingresando_nombre";
     vidas = 3;
-    puntaje = 0;
+    sound_ganador.play();
+    nombre_jugador = ""; // Reiniciar nombre del jugador
+  } else if (estado_juego == "ingresando_nombre") {
+    if (keyCode === BACKSPACE && nombre_jugador.length > 0) {
+      nombre_jugador = nombre_jugador.slice(0, -1); // Elimina el último carácter
+    }else if (keyCode === ENTER && nombre_jugador.length > 0) {
+      guardar_puntajes(nombre_jugador, puntaje);
+      estado_juego = "menu";
+    }else if (key.length === 1 && nombre_jugador.length < 7 && key.match(/^[a-zA-Z0-9]$/)) {
+      nombre_jugador += key; // Agrega el carácter al nombre
+    }
   }
 }
 
@@ -342,7 +364,6 @@ function mostrar_transicion() {
 }
 
 function mostrar_gameover() {
-  sound_muerte_jugador.play();
   background(0);
   fill(255);
   textAlign(CENTER, CENTER);
@@ -353,7 +374,6 @@ function mostrar_gameover() {
 }
 
 function mostrar_puntajes() {
-  verificar_puntaje();
   fill(50);
   rect(width / 2 - 100, height / 2 + 50, 200, 180, 10);
 
@@ -361,61 +381,50 @@ function mostrar_puntajes() {
   textSize(20);
   text("TOP 5 PUNTAJES", width / 2, height / 2 + 70);
 
-  let puntajesOrdenados = mejoresPuntajes.sort((a, b) => b - a).slice(0, 5);
-  for (let i = 0; i < puntajesOrdenados.length; i++) {
-    text(`#${i + 1}: ${puntajesOrdenados[i]}`, width / 2, height / 2 + 100 + i * 25);
+  for (let i = 0; i < mejoresPuntajes.length; i++) {
+    let entry = mejoresPuntajes[i];
+    text(`#${i + 1}: ${entry.nombre} - ${entry.puntaje}`, width / 2, height / 2 + 100 + i * 25);
   }
 }
 
+function mostrar_ingreso_nombre() {
+  background(0);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(32);
+  text("¡Fin del nivel!", width / 2, height / 2 - 80);
+  textSize(24);
+  text("Ingresa tu nombre (máx. 7 caracteres):", width / 2, height / 2 - 20);
+  textSize(32);
+  fill(0, 255, 0);
+  text(nombre_jugador + (frameCount % 30 < 15 ? "|" : ""), width / 2, height / 2 + 30);
+  textSize(16);
+  fill(200);
+  text("Presiona ENTER para guardar", width / 2, height / 2 + 70);
+}
 
-function verificar_puntaje(nuevoPuntaje) {
-  // Encontramos el menor puntaje en la lista
-  let menorPuntaje = Math.min(...mejoresPuntajes.map(p => p.puntaje));
-
-  if (nuevoPuntaje > menorPuntaje) {
-
-    // Agregamos el nuevo puntaje
-    mejoresPuntajes.push(nuevoPuntaje);
-
-    // Ordenamos y mantenemos solo los 5 mejores
-    mejoresPuntajes.sort((a, b) => b.puntaje - a.puntaje);
-    mejoresPuntajes = mejoresPuntajes.slice(0, 5);
-
-    estado_juego = "menu";
-  }
+function guardar_puntajes(nombre, puntaje) {
+  mejoresPuntajes.push({ nombre, puntaje });
+  mejoresPuntajes.sort((a, b) => b.puntaje - a.puntaje);
+  mejoresPuntajes = mejoresPuntajes.slice(0, 5);
+  guardar_puntajes_local();
+  localStorage.setItem("mejoresPuntajes", JSON.stringify(mejoresPuntajes));
 }
 
 function cargar_puntajes() {
   let datos = localStorage.getItem("mejoresPuntajes");
   if (datos) {
     mejoresPuntajes = JSON.parse(datos);
+    console.log("Puntajes cargados:", mejoresPuntajes);
   } else {
-    // Si no hay datos guardados, inicializamos con valores por defecto
-    mejoresPuntajes = [0, 0, 0, 0, 0];
-    guardar_puntajes();
+    mejoresPuntajes = [];
+    guardar_puntajes_local();
   }
 }
 
-function guardar_puntajes() {
+function guardar_puntajes_local() {
   localStorage.setItem("mejoresPuntajes", JSON.stringify(mejoresPuntajes));
 }
-
-function verificar_puntaje(nuevoPuntaje) {
-  let menorPuntaje = Math.min(...mejoresPuntajes);
-
-  if (nuevoPuntaje > menorPuntaje) {
-    // Agregar puntaje y ordenar
-    mejoresPuntajes.push(nuevoPuntaje);
-    mejoresPuntajes.sort((a, b) => b - a);
-    mejoresPuntajes = mejoresPuntajes.slice(0, 5); // Mantener solo los 5 mejores
-
-    guardar_puntajes(); // Guardar nueva lista
-
-    estado_juego = "menu";
-  }
-}
-
-
 
 //SISTEMA DE MENU----------------------------------------------END
 
@@ -507,11 +516,12 @@ function actualizar() {
         new Enemigos(500, 100, 40, 40, 'tipo3', 3),
         new Enemigos(400, 50, 60, 60, 'tipo4', 7)
       ]);
-      if (puntaje>=55) estado_juego = "menu";
+      if (puntaje>=55) estado_juego = "ingresando_nombre"; // Nivel 3 conseguir 55 puntos
       break;
     }
   if (vidas <= 0) {
     estado_juego = "gameover";
+    sound_muerte_jugador.play();
   }
 }
 //SISTEMA DE NIVELES----------------------------------------------END
@@ -576,5 +586,7 @@ function draw() {
     actualizar();
   } else if (estado_juego === "gameover") {
     mostrar_gameover();
+  } else if (estado_juego === "ingresando_nombre") {
+    mostrar_ingreso_nombre();
   }
 }
